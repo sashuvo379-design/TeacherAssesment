@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Educator Assessment System - Psychometric & Evaluation Architecture</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f4f6fb',
+                            100: '#e8ecf6',
+                            200: '#c8d4ed',
+                            600: '#3b5998',
+                            700: '#2d4373',
+                            800: '#1e2d4d',
+                            900: '#0f172a',
+                        },
+                        amber: {
+                            500: '#f59e0b',
+                            600: '#d97706',
+                        },
+                        emerald: {
+                            600: '#059669',
+                            700: '#047857',
+                        },
+                        rose: {
+                            600: '#dc2626',
+                            700: '#b91c1c',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar and Base Styling */
+        body {
+            background-color: #FDFBF7;
+            color: #334155;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 550px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 380px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 340px;
+            }
+        }
+        .tab-btn.active {
+            border-bottom: 3px solid #3b5998;
+            color: #1e2d4d;
+            font-weight: 700;
+        }
+        .custom-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+    </style>
+    <!-- Chosen Palette: Warm Neutral Harmony (Warm Cream background `#FDFBF7`, Slate Gray text `#334155`, Slate/Navy primary `#1e2d4d`, Amber accent `#d97706`, Emerald green for pass `#059669`, Rose red for fail/hurdle `#dc2626`) -->
+    <!-- Application Structure Plan: The SPA is structured into five core interactive sections accessible via a sticky navigation header: 1. Architecture Dashboard (interactive breakdown of modules and sub-weights with conceptual flow diagrams), 2. Live Band Score Calculator & IELTS Rounding Simulator (allowing users to test candidate scores across models, verify hurdle rules, and visualize weighted score math), 3. Band Attainment Rubric Matrix (filterable by module and score tier for quick criterion lookup), 4. Inter-Rater Reliability & Adjudication Workbench (interactive simulator for dual-evaluator discrepancy checks), and 5. Operational Risk & Implementation Strategy (matrix of key psychometric risks and mitigations). This non-linear, task-oriented layout empowers stakeholders, evaluators, and candidates to intuitively explore the assessment mechanics, understand gatekeeping logic, and test edge-case scenarios effortlessly. -->
+    <!-- Visualization & Content Choices: 1. Module Weight Distribution: Chart.js Donut Chart showing the 30/30/40 weight breakdown. 2. Scoring Model Comparison: Chart.js Grouped Bar Chart contrasting raw vs IELTS rounded bands across test candidates. 3. Candidate Radar Profile: Chart.js Radar Chart showing individual sub-component mastery against the Band 5.0 baseline. 4. Interactive Flow & Hurdle Simulator: Styled HTML/Tailwind cards with dynamic JS state handlers to visually show gatekeeping status. 5. Inter-Rater Discrepancy Calculator: Live HTML form with automatic alert badges for >1.5 band variance. NO SVG or Mermaid JS used. All visual graphics built with Canvas (Chart.js) and Tailwind CSS. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- Header & Navigation -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-lg bg-brand-800 text-amber-500 font-extrabold text-xl flex items-center justify-center shadow">
+                        EAS
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold text-slate-900 leading-tight">Educator Assessment Architecture</h1>
+                        <p class="text-xs text-slate-500">Three-Module Psychometric & Evaluation Model</p>
+                    </div>
+                </div>
+                <nav class="hidden md:flex space-x-6 text-sm font-medium text-slate-600">
+                    <button onclick="switchTab('nav-architecture')" id="btn-nav-architecture" class="tab-btn active py-5 px-1 hover:text-brand-800">Architecture & Flow</button>
+                    <button onclick="switchTab('nav-calculator')" id="btn-nav-calculator" class="tab-btn py-5 px-1 hover:text-brand-800">Band Calculator</button>
+                    <button onclick="switchTab('nav-rubric')" id="btn-nav-rubric" class="tab-btn py-5 px-1 hover:text-brand-800">10-Band Rubric</button>
+                    <button onclick="switchTab('nav-interrater')" id="btn-nav-interrater" class="tab-btn py-5 px-1 hover:text-brand-800">Inter-Rater Workbench</button>
+                    <button onclick="switchTab('nav-risk')" id="btn-nav-risk" class="tab-btn py-5 px-1 hover:text-brand-800">Risk & Strategy</button>
+                </nav>
+                <div class="flex items-center space-x-2">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+                        Band 1.0 - 10.0 Scale
+                    </span>
+                </div>
+            </div>
+            <!-- Mobile Navigation Links -->
+            <div class="md:hidden flex overflow-x-auto py-2 space-x-4 text-xs font-medium border-t border-slate-100">
+                <button onclick="switchTab('nav-architecture')" class="whitespace-nowrap text-brand-800 font-bold">Architecture</button>
+                <button onclick="switchTab('nav-calculator')" class="whitespace-nowrap text-slate-600">Calculator</button>
+                <button onclick="switchTab('nav-rubric')" class="whitespace-nowrap text-slate-600">Rubric</button>
+                <button onclick="switchTab('nav-interrater')" class="whitespace-nowrap text-slate-600">Inter-Rater</button>
+                <button onclick="switchTab('nav-risk')" class="whitespace-nowrap text-slate-600">Risk Matrix</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <!-- SECTION 1: ARCHITECTURE & PIPELINE FLOW -->
+        <section id="nav-architecture" class="tab-content space-y-6">
+            <div class="bg-amber-50/50 border border-amber-200/60 rounded-xl p-6">
+                <h2 class="text-2xl font-bold text-slate-900 mb-2">Architectural Framework & Gatekeeping Pipeline</h2>
+                <p class="text-slate-600 leading-relaxed">
+                    This educator evaluation model structures teacher candidate credentialing into three sequential modules: <strong>Module 1: Written Examination (30%)</strong>, <strong>Module 2: Viva & Behavioral Assessment (30%)</strong>, and <strong>Module 3: Practical Micro-Teaching Demo (40%)</strong>. Modeled on international standards like IELTS but expanded to a 10-point band scale, candidates must achieve a minimum hurdle score of <strong>Band 5.0</strong> at each progressive stage to advance.
+                </p>
+            </div>
+
+            <!-- Flow Visualizer Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Module 1 Card -->
+                <div class="custom-card rounded-xl p-6 border-l-4 border-l-brand-600 flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-xs font-bold uppercase tracking-wider text-brand-600 bg-brand-50 px-2.5 py-1 rounded-md">Module 1</span>
+                            <span class="text-xs font-semibold text-slate-500">Weight: 30%</span>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-900 mb-2">Written Examination</h3>
+                        <p class="text-xs text-slate-500 mb-4">Evaluates theoretical discipline mastery, diagnostic competence, and ambiguity decoding.</p>
+                        
+                        <div class="space-y-3 mb-4">
+                            <div class="bg-slate-50 p-3 rounded-lg text-xs">
+                                <div class="flex justify-between font-semibold text-slate-700">
+                                    <span>Domain Knowledge</span>
+                                    <span>60%</span>
+                                </div>
+                                <p class="text-slate-500 text-[11px] mt-1">Cognitive mastery & content structure</p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-lg text-xs">
+                                <div class="flex justify-between font-semibold text-slate-700">
+                                    <span>Fault Diagnosis</span>
+                                    <span>20%</span>
+                                </div>
+                                <p class="text-slate-500 text-[11px] mt-1">Isolating student cognitive etiology</p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-lg text-xs">
+                                <div class="flex justify-between font-semibold text-slate-700">
+                                    <span>Query Decoding</span>
+                                    <span>20%</span>
+                                </div>
+                                <p class="text-slate-500 text-[11px] mt-1">Inferring intent from vague queries</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="border-t border-slate-100 pt-3 flex justify-between items-center text-xs">
+                        <span class="font-bold text-rose-600">Hurdle: Band &ge; 5.0</span>
+                        <span class="text-slate-400">Required to unlock Viva</span>
+                    </div>
+                </div>
+
+                <!-- Module 2 Card -->
+                <div class="custom-card rounded-xl p-6 border-l-4 border-l-amber-500 flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-xs font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-2.5 py-1 rounded-md">Module 2</span>
+                            <span class="text-xs font-semibold text-slate-500">Weight: 30%</span>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-900 mb-2">Viva & Behavioral</h3>
+                        <p class="text-xs text-slate-500 mb-4">Assesses psychological readiness, ethics, composure under stress, and learner empathy.</p>
+                        
+                        <div class="space-y-3 mb-4">
+                            <div class="bg-slate-50 p-3 rounded-lg text-xs">
+                                <div class="flex justify-between font-semibold text-slate-700">
+                                    <span>Psychological Mindset</span>
+                                    <span>30%</span>
+                                </div>
+                                <p class="text-slate-500 text-[11px] mt-1">Growth orientation & self-efficacy</p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-lg text-xs border-l-2 border-l-rose-500">
+                                <div class="flex justify-between font-semibold text-slate-700">
+                                    <span>Safeguards & Ethics</span>
+                                    <span>30%</span>
+                                </div>
+                                <p class="text-slate-500 text-[11px] mt-1">Child safety & boundaries (Strict Hurdle)</p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-lg text-xs">
+                                <div class="flex justify-between font-semibold text-slate-700">
+                                    <span>Mental Resilience</span>
+                                    <span>20%</span>
+                                </div>
+                                <p class="text-slate-500 text-[11px] mt-1">De-escalation under simulated pressure</p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-lg text-xs">
+                                <div class="flex justify-between font-semibold text-slate-700">
+                                    <span>Patience & Support</span>
+                                    <span>20%</span>
+                                </div>
+                                <p class="text-slate-500 text-[11px] mt-1">Empathetic non-punitive scaffolding</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="border-t border-slate-100 pt-3 flex justify-between items-center text-xs">
+                        <span class="font-bold text-rose-600">Hurdle: Band &ge; 5.0</span>
+                        <span class="text-slate-400">Required to unlock Demo</span>
+                    </div>
+                </div>
+
+                <!-- Module 3 Card -->
+                <div class="custom-card rounded-xl p-6 border-l-4 border-l-emerald-600 flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md">Module 3</span>
+                            <span class="text-xs font-semibold text-slate-500">Weight: 40%</span>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-900 mb-2">Practical Micro-Demo</h3>
+                        <p class="text-xs text-slate-500 mb-4">Translates theoretical knowledge and psychological readiness into live classroom teaching.</p>
+                        
+                        <div class="space-y-3 mb-4">
+                            <div class="bg-slate-50 p-3 rounded-lg text-xs">
+                                <div class="flex justify-between font-semibold text-slate-700">
+                                    <span>Pedagogical Execution</span>
+                                    <span>35%</span>
+                                </div>
+                                <p class="text-slate-500 text-[11px] mt-1">Lesson pacing, mapping & structure</p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-lg text-xs">
+                                <div class="flex justify-between font-semibold text-slate-700">
+                                    <span>Interactive Engagement</span>
+                                    <span>35%</span>
+                                </div>
+                                <p class="text-slate-500 text-[11px] mt-1">Higher-order questioning & rapport</p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-lg text-xs">
+                                <div class="flex justify-between font-semibold text-slate-700">
+                                    <span>Adaptive Feedback</span>
+                                    <span>30%</span>
+                                </div>
+                                <p class="text-slate-500 text-[11px] mt-1">Real-time error correction & shifts</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="border-t border-slate-100 pt-3 flex justify-between items-center text-xs">
+                        <span class="font-bold text-rose-600">Hurdle: Band &ge; 5.0</span>
+                        <span class="text-slate-400">Final Composite Inclusion</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Graphical Weighting Analysis & Conceptual Flow Diagram -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Chart Container -->
+                <div class="custom-card rounded-xl p-6 flex flex-col items-center justify-center">
+                    <h3 class="text-base font-bold text-slate-900 mb-1 self-start">Module Weight Allocation</h3>
+                    <p class="text-xs text-slate-500 mb-4 self-start">Practical-heavy weighting scheme (30% Written / 30% Viva / 40% Demo)</p>
+                    <div class="chart-container">
+                        <canvas id="weightDonutChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Dynamic Fault Diagnosis Model Flow -->
+                <div class="custom-card rounded-xl p-6">
+                    <h3 class="text-base font-bold text-slate-900 mb-1">Diagnostic Competence Model</h3>
+                    <p class="text-xs text-slate-500 mb-4">How Module 1 evaluates novice vs. expert fault diagnosis in candidate responses.</p>
+                    
+                    <div class="space-y-4 text-xs">
+                        <div class="p-4 rounded-lg bg-slate-50 border border-slate-200">
+                            <span class="font-bold text-brand-800 text-sm block mb-1">Step 1: Symptom Identification</span>
+                            <p class="text-slate-600">Locate operational or procedural errors within a provided student work sample (e.g., miscalculating an equation step).</p>
+                        </div>
+                        <div class="p-4 rounded-lg bg-amber-50 border border-amber-200">
+                            <span class="font-bold text-amber-900 text-sm block mb-1">Step 2: Cognitive Etiology Isolation</span>
+                            <p class="text-amber-800">Trace the observed symptom back to its underlying psychological/conceptual misunderstanding (e.g., misinterpreting symbolic inverse operations).</p>
+                        </div>
+                        <div class="p-4 rounded-lg bg-emerald-50 border border-emerald-200">
+                            <span class="font-bold text-emerald-900 text-sm block mb-1">Step 3: Targeted Remediation Strategy</span>
+                            <p class="text-emerald-800">Formulate three distinct, non-punitive entry points to scaffold the student's conceptual re-engagement.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: LIVE BAND SCORE CALCULATOR & SIMULATOR -->
+        <section id="nav-calculator" class="tab-content hidden space-y-6">
+            <div class="bg-amber-50/50 border border-amber-200/60 rounded-xl p-6">
+                <h2 class="text-2xl font-bold text-slate-900 mb-2">Composite Band Calculator & IELTS Rounding Simulator</h2>
+                <p class="text-slate-600 leading-relaxed">
+                    Test candidate module scores against the standardized mathematical aggregation formula: 
+                    <code class="bg-amber-100 text-amber-900 px-2 py-0.5 rounded font-mono text-xs font-bold">S_raw = (0.30 * B_W) + (0.30 * B_V) + (0.40 * B_D)</code>. 
+                    The raw composite score is rounded using adapted IELTS rules: fractional remainders < 0.25 round down to the nearest whole band, remainders &ge; 0.25 and < 0.75 round to 0.5, and &ge; 0.75 round up to the next whole band. All three modules must clear Band 5.0 to pass.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Interactive Input Controls -->
+                <div class="lg:col-span-5 custom-card rounded-xl p-6 space-y-6">
+                    <h3 class="text-lg font-bold text-slate-900 border-b border-slate-100 pb-3">Candidate Module Scores</h3>
+                    
+                    <!-- Written Slider -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs font-bold text-slate-700">Module 1: Written Score ($B_W$)</label>
+                            <span id="val-bw" class="text-sm font-extrabold text-brand-700 bg-brand-50 px-2 py-0.5 rounded">6.5</span>
+                        </div>
+                        <input type="range" id="input-bw" min="1.0" max="10.0" step="0.5" value="6.5" class="w-full accent-brand-600 cursor-pointer" oninput="updateCalculator()">
+                        <p class="text-[11px] text-slate-400 mt-1">Hurdle: 5.0 | Domain (60%), Fault (20%), Query (20%)</p>
+                    </div>
+
+                    <!-- Viva Slider -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs font-bold text-slate-700">Module 2: Viva Score ($B_V$)</label>
+                            <span id="val-bv" class="text-sm font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">6.0</span>
+                        </div>
+                        <input type="range" id="input-bv" min="1.0" max="10.0" step="0.5" value="6.0" class="w-full accent-amber-600 cursor-pointer" oninput="updateCalculator()">
+                        <p class="text-[11px] text-slate-400 mt-1">Hurdle: 5.0 | Mindset (30%), Safeguards (30%), Resilience (20%), Patience (20%)</p>
+                    </div>
+
+                    <!-- Safeguard Checkbox -->
+                    <div class="bg-rose-50 border border-rose-200 rounded-lg p-3 flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-bold text-rose-900 block">Safeguarding Sub-Component Status</span>
+                            <span class="text-[11px] text-rose-700">Did candidate meet Band 5.0 baseline in Safeguards?</span>
+                        </div>
+                        <input type="checkbox" id="input-safeguards" checked class="w-4 h-4 text-rose-600 accent-rose-600 rounded cursor-pointer" onchange="updateCalculator()">
+                    </div>
+
+                    <!-- Demo Slider -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs font-bold text-slate-700">Module 3: Demo Score ($B_D$)</label>
+                            <span id="val-bd" class="text-sm font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">6.0</span>
+                        </div>
+                        <input type="range" id="input-bd" min="1.0" max="10.0" step="0.5" value="6.0" class="w-full accent-emerald-600 cursor-pointer" oninput="updateCalculator()">
+                        <p class="text-[11px] text-slate-400 mt-1">Hurdle: 5.0 | Execution (35%), Engagement (35%), Feedback (30%)</p>
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-100 flex justify-between items-center text-xs">
+                        <span class="text-slate-500">Preset Candidates:</span>
+                        <div class="space-x-1">
+                            <button onclick="loadCandidatePreset(6.5, 6.0, 6.0, true)" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-slate-700">Cand A</button>
+                            <button onclick="loadCandidatePreset(8.0, 7.5, 5.5, true)" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-slate-700">Cand C</button>
+                            <button onclick="loadCandidatePreset(9.0, 8.5, 4.5, true)" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-slate-700">Cand D (Fail)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Mathematical Output & Profile Radar -->
+                <div class="lg:col-span-7 space-y-6">
+                    <!-- Results Card -->
+                    <div class="custom-card rounded-xl p-6">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                            <div class="bg-slate-50 p-4 rounded-xl text-center">
+                                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">Raw Weighted ($S_{raw}$)</span>
+                                <span id="out-sraw" class="text-2xl font-black text-slate-800">6.15</span>
+                                <span id="out-remainder" class="text-[11px] text-slate-500 block mt-1">Remainder R = 0.15</span>
+                            </div>
+                            <div class="bg-brand-50 p-4 rounded-xl text-center border border-brand-200">
+                                <span class="text-xs font-semibold text-brand-800 uppercase tracking-wider block mb-1">IELTS Rounded Band</span>
+                                <span id="out-band" class="text-3xl font-black text-brand-700">Band 6.0</span>
+                                <span id="out-rule" class="text-[11px] text-brand-600 block mt-1">R < 0.25 (Rounds Down)</span>
+                            </div>
+                            <div id="status-card-bg" class="bg-emerald-50 p-4 rounded-xl text-center border border-emerald-200">
+                                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">Gatekeeper Determination</span>
+                                <span id="out-status" class="text-xl font-black text-emerald-700">PASS</span>
+                                <span id="out-status-sub" class="text-[11px] text-emerald-600 block mt-1">Certified Educator</span>
+                            </div>
+                        </div>
+
+                        <!-- Step-by-step Math Explanation -->
+                        <div class="bg-slate-50 p-4 rounded-lg text-xs space-y-2 border border-slate-200 font-mono">
+                            <div class="flex justify-between text-slate-700">
+                                <span>$S_{raw} = (0.30 \times B_W) + (0.30 \times B_V) + (0.40 \times B_D)$</span>
+                            </div>
+                            <div id="out-math-line" class="text-slate-600 font-bold">
+                                $S_{raw} = (0.30 \times 6.5) + (0.30 \times 6.0) + (0.40 \times 6.0) = 1.95 + 1.80 + 2.40 = 6.15$
+                            </div>
+                            <div id="out-hurdle-recap" class="text-slate-500 border-t border-slate-200 pt-2 font-sans">
+                                Hurdle Check: Written &ge; 5.0 (PASS), Viva &ge; 5.0 (PASS), Demo &ge; 5.0 (PASS).
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Radar Chart Container -->
+                    <div class="custom-card rounded-xl p-6 flex flex-col items-center">
+                        <h4 class="text-sm font-bold text-slate-900 mb-1 self-start">Candidate Evaluation Radar Profile</h4>
+                        <p class="text-xs text-slate-500 mb-3 self-start">Comparing candidate module scores against the Band 5.0 hurdle baseline</p>
+                        <div class="chart-container">
+                            <canvas id="candidateRadarChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Standardized Worked Scenarios Table -->
+            <div class="custom-card rounded-xl p-6">
+                <h3 class="text-lg font-bold text-slate-900 mb-4">Psychometric Validation Scenarios (Report Table 2)</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-600">
+                        <thead class="bg-slate-100 text-slate-700 uppercase font-bold text-[11px]">
+                            <tr>
+                                <th class="p-3">Candidate</th>
+                                <th class="p-3">Written ($B_W$)</th>
+                                <th class="p-3">Viva ($B_V$)</th>
+                                <th class="p-3">Demo ($B_D$)</th>
+                                <th class="p-3">Raw ($S_{raw}$)</th>
+                                <th class="p-3">Remainder ($R$)</th>
+                                <th class="p-3">Final Band ($B_{overall}$)</th>
+                                <th class="p-3">Status</th>
+                                <th class="p-3">Gatekeeping Rationale</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200">
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold text-slate-900">Candidate A</td>
+                                <td class="p-3">6.5</td>
+                                <td class="p-3">6.0</td>
+                                <td class="p-3">6.0</td>
+                                <td class="p-3">6.15</td>
+                                <td class="p-3">0.15</td>
+                                <td class="p-3 font-bold text-brand-700">6.0</td>
+                                <td class="p-3"><span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold">PASS</span></td>
+                                <td class="p-3 text-[11px]">$R = 0.15 < 0.25$ rounds down to 6.0. All hurdles cleared.</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold text-slate-900">Candidate B</td>
+                                <td class="p-3">7.0</td>
+                                <td class="p-3">6.5</td>
+                                <td class="p-3">6.5</td>
+                                <td class="p-3">6.65</td>
+                                <td class="p-3">0.65</td>
+                                <td class="p-3 font-bold text-brand-700">6.5</td>
+                                <td class="p-3"><span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold">PASS</span></td>
+                                <td class="p-3 text-[11px]">$0.25 \le R = 0.65 < 0.75$ rounds to 6.5. All hurdles cleared.</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold text-slate-900">Candidate C</td>
+                                <td class="p-3">8.0</td>
+                                <td class="p-3">7.5</td>
+                                <td class="p-3">5.5</td>
+                                <td class="p-3">6.85</td>
+                                <td class="p-3">0.85</td>
+                                <td class="p-3 font-bold text-brand-700">7.0</td>
+                                <td class="p-3"><span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold">PASS</span></td>
+                                <td class="p-3 text-[11px]">$R = 0.85 \ge 0.75$ rounds up to 7.0. All hurdles cleared.</td>
+                            </tr>
+                            <tr class="hover:bg-rose-50/40">
+                                <td class="p-3 font-bold text-slate-900">Candidate D</td>
+                                <td class="p-3">9.0</td>
+                                <td class="p-3">8.5</td>
+                                <td class="p-3 font-bold text-rose-600">4.5</td>
+                                <td class="p-3">7.05</td>
+                                <td class="p-3">0.05</td>
+                                <td class="p-3 font-bold text-rose-600">FAIL</td>
+                                <td class="p-3"><span class="px-2 py-0.5 bg-rose-100 text-rose-800 rounded font-bold">FAIL</span></td>
+                                <td class="p-3 text-[11px] text-rose-700 font-semibold">Failed Demo hurdle ($4.5 < 5.0$). Composite invalidated.</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold text-slate-900">Candidate E</td>
+                                <td class="p-3">5.0</td>
+                                <td class="p-3">5.0</td>
+                                <td class="p-3">5.0</td>
+                                <td class="p-3">5.00</td>
+                                <td class="p-3">0.00</td>
+                                <td class="p-3 font-bold text-brand-700">5.0</td>
+                                <td class="p-3"><span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold">PASS</span></td>
+                                <td class="p-3 text-[11px]">Exact baseline passing standard across all modules.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: 10-BAND RUBRIC MATRIX -->
+        <section id="nav-rubric" class="tab-content hidden space-y-6">
+            <div class="bg-amber-50/50 border border-amber-200/60 rounded-xl p-6">
+                <h2 class="text-2xl font-bold text-slate-900 mb-2">Comprehensive 10-Band Attainment Rubric Matrix</h2>
+                <p class="text-slate-600 leading-relaxed">
+                    Filter qualitative performance descriptors across the five standardized attainment tiers (Bands 9.0-10.0 Exemplary to Bands 1.0-2.5 Incompetent). Select a module to explore sub-component criteria.
+                </p>
+            </div>
+
+            <!-- Rubric Filter Bar -->
+            <div class="custom-card rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex space-x-2">
+                    <button onclick="setRubricModule('m1')" id="rub-btn-m1" class="px-4 py-2 rounded-lg text-xs font-bold bg-brand-800 text-white">Module 1: Written</button>
+                    <button onclick="setRubricModule('m2')" id="rub-btn-m2" class="px-4 py-2 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">Module 2: Viva</button>
+                    <button onclick="setRubricModule('m3')" id="rub-btn-m3" class="px-4 py-2 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">Module 3: Demo</button>
+                </div>
+                <div class="flex items-center space-x-2 text-xs">
+                    <span class="text-slate-500 font-semibold">Tier Highlight:</span>
+                    <select id="rubric-tier-select" onchange="filterRubricTier()" class="border border-slate-300 rounded-md p-1.5 text-xs text-slate-700 bg-white">
+                        <option value="all">Show All Tiers</option>
+                        <option value="tier-1">Bands 9.0 - 10.0 (Exemplary)</option>
+                        <option value="tier-2">Bands 7.0 - 8.5 (Proficient)</option>
+                        <option value="tier-3">Bands 5.0 - 6.5 (Competent / Baseline Pass)</option>
+                        <option value="tier-4">Bands 3.0 - 4.5 (Developing / Fail)</option>
+                        <option value="tier-5">Bands 1.0 - 2.5 (Incompetent / Fail)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Dynamic Rubric Grid Output -->
+            <div id="rubric-grid-container" class="space-y-4">
+                <!-- Rendered dynamically by JavaScript -->
+            </div>
+        </section>
+
+        <!-- SECTION 4: INTER-RATER WORKBENCH & CALIBRATION -->
+        <section id="nav-interrater" class="tab-content hidden space-y-6">
+            <div class="bg-amber-50/50 border border-amber-200/60 rounded-xl p-6">
+                <h2 class="text-2xl font-bold text-slate-900 mb-2">Inter-Rater Reliability & Adjudication Workbench</h2>
+                <p class="text-slate-600 leading-relaxed">
+                    Human evaluation panels carry risk of rater severity, leniency, or subjective bias. To maintain high psychometric reliability, all oral (Viva) and live (Demo) sessions are scored by dual independent evaluators. If the discrepancy between two raters exceeds <strong>1.5 Bands</strong>, an automatic senior master evaluator adjudication is triggered.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Dual Evaluator Interactive Simulator -->
+                <div class="custom-card rounded-xl p-6 space-y-6">
+                    <h3 class="text-lg font-bold text-slate-900 border-b border-slate-100 pb-3">Dual-Rater Discrepancy Simulator</h3>
+                    
+                    <div>
+                        <label class="text-xs font-bold text-slate-700 block mb-1">Evaluator A Score</label>
+                        <input type="range" id="rater-a" min="1.0" max="10.0" step="0.5" value="7.0" class="w-full accent-brand-600 cursor-pointer" oninput="updateInterRater()">
+                        <div class="flex justify-between text-xs text-slate-500 mt-1">
+                            <span>Score:</span>
+                            <span id="val-rater-a" class="font-bold text-brand-700">7.0</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-bold text-slate-700 block mb-1">Evaluator B Score</label>
+                        <input type="range" id="rater-b" min="1.0" max="10.0" step="0.5" value="5.0" class="w-full accent-amber-600 cursor-pointer" oninput="updateInterRater()">
+                        <div class="flex justify-between text-xs text-slate-500 mt-1">
+                            <span>Score:</span>
+                            <span id="val-rater-b" class="font-bold text-amber-700">5.0</span>
+                        </div>
+                    </div>
+
+                    <!-- Discrepancy Output Box -->
+                    <div id="discrepancy-box" class="p-4 rounded-xl border bg-amber-50 border-amber-200 text-amber-900 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold uppercase tracking-wider">Score Discrepancy</span>
+                            <span id="out-discrepancy" class="text-2xl font-black">2.0 Bands</span>
+                        </div>
+                        <p id="out-adjudication-msg" class="text-xs font-semibold">
+                            ⚠️ DISCREPANCY EXCEEDS 1.5 BANDS: Automatic Senior Master Evaluator adjudication triggered.
+                        </p>
+                    </div>
+
+                    <div class="bg-slate-50 p-3 rounded-lg text-xs space-y-1 text-slate-600 border border-slate-200">
+                        <span class="font-bold text-slate-800 block">System Protocol:</span>
+                        <p id="out-protocol-text">When discrepancy &le; 1.5 bands, the arithmetic mean is recorded as the final module score. When > 1.5 bands, a third master evaluator re-evaluates the recorded video/transcript.</p>
+                    </div>
+                </div>
+
+                <!-- Psychometric Calibration & Rasch Modeling Info -->
+                <div class="custom-card rounded-xl p-6 space-y-4">
+                    <h3 class="text-lg font-bold text-slate-900 border-b border-slate-100 pb-3">Psychometric Standardization Controls</h3>
+                    
+                    <div class="space-y-3 text-xs text-slate-600">
+                        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                            <h4 class="font-bold text-slate-800 text-sm mb-1">Many-Facet Rasch Measurement (MFRM)</h4>
+                            <p>Testing organizations utilize MFRM psychometric models to adjust candidate final scores based on individual rater severity parameters, ensuring cross-panel fairness across evaluation cohorts.</p>
+                        </div>
+
+                        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                            <h4 class="font-bold text-slate-800 text-sm mb-1">Pre-Assessment Calibration Workshops</h4>
+                            <p>Evaluators complete mandatory calibration sessions prior to live testing, scoring benchmark video recordings to align internal standards within a &plusmn;0.5 band variance window.</p>
+                        </div>
+
+                        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                            <h4 class="font-bold text-slate-800 text-sm mb-1">Unscripted Micro-Teaching Interruptions</h4>
+                            <p>During Module 3 (Demo), simulated students introduce unexpected learning bottlenecks to prevent candidates from relying on rehearsed scripts.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 5: OPERATIONAL RISK MATRIX & STRATEGY -->
+        <section id="nav-risk" class="tab-content hidden space-y-6">
+            <div class="bg-amber-50/50 border border-amber-200/60 rounded-xl p-6">
+                <h2 class="text-2xl font-bold text-slate-900 mb-2">Operational Risk Analysis & Mitigation Framework</h2>
+                <p class="text-slate-600 leading-relaxed">
+                    Deploying a high-stakes teacher assessment system introduces operational and psychometric vulnerabilities. The table below details key risk factors, threat severity levels, structural impacts, and targeted countermeasures.
+                </p>
+            </div>
+
+            <div class="custom-card rounded-xl p-6">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-600">
+                        <thead class="bg-slate-100 text-slate-700 uppercase font-bold text-[11px]">
+                            <tr>
+                                <th class="p-3">Operational Risk Factor</th>
+                                <th class="p-3">Threat Level</th>
+                                <th class="p-3">Structural Impact</th>
+                                <th class="p-3">Targeted Mitigation Strategy</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200">
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold text-slate-900">Evaluator Subjectivity & Leniency Bias</td>
+                                <td class="p-3"><span class="px-2 py-0.5 bg-rose-100 text-rose-800 rounded font-bold">HIGH</span></td>
+                                <td class="p-3">Unwarranted score variance across different panel teams in Viva and Demo modules.</td>
+                                <td class="p-3">Deploy dual-rater panels, mandatory anchor calibration, and Many-Facet Rasch psychometric adjustments.</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold text-slate-900">Surface Diagnostic Scoring</td>
+                                <td class="p-3"><span class="px-2 py-0.5 bg-amber-100 text-amber-800 rounded font-bold">MEDIUM</span></td>
+                                <td class="p-3">Candidates pass Written diagnostic items by identifying errors without understanding root causes.</td>
+                                <td class="p-3">Structure written items around two-tiered scoring rubrics requiring explicit cognitive etiology explanations.</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold text-slate-900">Scripted Demo Rehearsal</td>
+                                <td class="p-3"><span class="px-2 py-0.5 bg-amber-100 text-amber-800 rounded font-bold">MEDIUM</span></td>
+                                <td class="p-3">Candidates deliver memorized micro-lessons without demonstrating genuine instructional adaptability.</td>
+                                <td class="p-3">Inject unscripted, simulated student interruptions during the Demo session to assess real-time flexibility.</td>
+                            </tr>
+                            <tr class="hover:bg-rose-50/40">
+                                <td class="p-3 font-bold text-slate-900">Safeguarding Vulnerabilities</td>
+                                <td class="p-3"><span class="px-2 py-0.5 bg-rose-700 text-white rounded font-bold">CRITICAL</span></td>
+                                <td class="p-3">Candidates with boundary or safety risks obtain certification due to high technical scores.</td>
+                                <td class="p-3 font-bold text-rose-900">Enforce absolute gatekeeping rule: Band &lt; 5.0 in Safeguards results in immediate disqualification.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-6 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+            <p>Three-Module Educator Assessment & Standardization Model &bull; Standardized 10-Band Psychometric Scale</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Global State & Data
+        let currentTab = 'nav-architecture';
+        let currentRubricModule = 'm1';
+        let weightDonutChartInstance = null;
+        let candidateRadarChartInstance = null;
+
+        // Dynamic Rubric Data Dictionary
+        const rubricData = {
+            m1: {
+                title: "Module 1: Written Examination Rubric",
+                subcomponents: ["Domain Knowledge (60%)", "Fault Diagnosis (20%)", "Query Decoding (20%)"],
+                tiers: [
+                    { id: "tier-1", label: "Bands 9.0 - 10.0 (Exemplary)", domain: "Demonstrates thorough, flawless conceptual mastery; synthesizes complex disciplinary concepts effortlessly.", fault: "Pinpoints exact cognitive misconceptions behind student errors; formulates comprehensive remediation strategies.", query: "Decodes complex, highly ambiguous student inquiries flawlessly; identifies root conceptual confusion." },
+                    { id: "tier-2", label: "Bands 7.0 - 8.5 (Proficient)", domain: "Shows complete content mastery with minor non-conceptual omissions; explains core topics clearly.", fault: "Accurately isolates student error sources and underlying conceptual breakdowns; suggests valid remediation.", query: "Correctly interprets student intent in ambiguous questions with minimal misdirection." },
+                    { id: "tier-3", label: "Bands 5.0 - 6.5 (Competent / Baseline Pass)", domain: "Demonstrates adequate baseline subject knowledge; meets standard curriculum requirements.", fault: "Detects surface-level procedural errors accurately; offers basic instructional correction.", query: "Decodes standard student queries correctly; experiences minor difficulty with highly disorganized inputs." },
+                    { id: "tier-4", label: "Bands 3.0 - 4.5 (Developing / Fail)", domain: "Displays notable gaps in core subject matter; commits minor factual errors in written responses.", fault: "Recognizes that an answer is incorrect but fails to identify the underlying cognitive misconception.", query: "Misinterprets ambiguous student questions, providing tangential or off-target explanations." },
+                    { id: "tier-5", label: "Bands 1.0 - 2.5 (Incompetent / Fail)", domain: "Demonstrates severe lack of subject knowledge; contains widespread factual inaccuracies.", fault: "Unable to identify simple operational or conceptual errors in student work samples.", query: "Completely fails to comprehend student questions or infer instructional intent." }
+                ]
+            },
+            m2: {
+                title: "Module 2: Viva & Behavioral Assessment Rubric",
+                subcomponents: ["Psychological Mindset (30%)", "Safeguards & Ethics (30%)", "Mental Resilience (20%)", "Patience & Support (20%)"],
+                tiers: [
+                    { id: "tier-1", label: "Bands 9.0 - 10.0 (Exemplary)", domain: "Displays exceptional growth mindset, deep self-awareness, and high reflective capacity.", fault: "Demonstrates complete mastery of child safety standards, ethics, and mandatory reporting protocols.", query: "Maintains emotional composure under high pressure; de-escalates tense scenarios skillfully." },
+                    { id: "tier-2", label: "Bands 7.0 - 8.5 (Proficient)", domain: "Shows strong professional dedication, self-reflection, and receptivity to feedback.", fault: "Displays thorough understanding of safeguarding standards and professional boundaries.", query: "Handles high-pressure situational dilemmas calmly and methodically." },
+                    { id: "tier-3", label: "Bands 5.0 - 6.5 (Competent / Baseline Pass)", domain: "Meets standard professional expectations; demonstrates basic self-reflection and adaptability.", fault: "Understands basic child protection rules and mandatory reporting channels.", query: "Manages routine workplace stress adequately without losing emotional control." },
+                    { id: "tier-4", label: "Bands 3.0 - 4.5 (Developing / Fail)", domain: "Displays rigid mindset; becomes defensive when presented with critical professional feedback.", fault: "Has vague or incomplete knowledge of safeguarding protocols; shows boundary ambiguities.", query: "Flustered easily by pressure; displays poor conflict resolution skills in simulations." },
+                    { id: "tier-5", label: "Bands 1.0 - 2.5 (Incompetent / Fail)", domain: "Exhibits unprofessional demeanor, lack of empathy, or toxic behavioral tendencies.", fault: "Demonstrates ignorance of child safety laws or unethical disregard for student protection.", query: "Reacts aggressively or freezes when exposed to situational workplace stress." }
+                ]
+            },
+            m3: {
+                title: "Module 3: Practical Micro-Teaching Demo Rubric",
+                subcomponents: ["Pedagogical Execution (35%)", "Learner Engagement (35%)", "Adaptive Feedback (30%)"],
+                tiers: [
+                    { id: "tier-1", label: "Bands 9.0 - 10.0 (Exemplary)", domain: "Lesson execution is impeccably structured, engaging, and perfectly paced throughout.", fault: "Facilitates deep active learning; uses advanced, open-ended questioning techniques.", query: "Dynamically adapts instruction based on real-time formative assessment cues." },
+                    { id: "tier-2", label: "Bands 7.0 - 8.5 (Proficient)", domain: "Lesson is well-planned, clear, and logically sequenced with smooth transitions.", fault: "Maintains active student participation and strong instructional rapport.", query: "Monitors comprehension effectively; adjusts explanations when students express confusion." },
+                    { id: "tier-3", label: "Bands 5.0 - 6.5 (Competent / Baseline Pass)", domain: "Delivers clear, standard lesson; covers core learning objectives reliably.", fault: "Keeps students focused through direct instruction; relies on standard questioning.", query: "Performs basic checking for understanding; provides standard corrective feedback." },
+                    { id: "tier-4", label: "Bands 3.0 - 4.5 (Developing / Fail)", domain: "Lesson is disorganized, poorly paced, or lacks clear instructional objectives.", fault: "Creates passive learning environment; lecture-heavy with minimal student interaction.", query: "Ignores student confusion; pushes forward with planned material rigidly." },
+                    { id: "tier-5", label: "Bands 1.0 - 2.5 (Incompetent / Fail)", domain: "Demonstrates inability to deliver coherent content; instructions are chaotic or incorrect.", fault: "Complete absence of engagement; environment is hostile, chaotic, or unmanaged.", query: "Fails to notice or correct blatant student misunderstandings during delivery." }
+                ]
+            }
+        };
+
+        // Tab Switcher Logic
+        function switchTab(tabId) {
+            currentTab = tabId;
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+            document.getElementById(tabId).classList.remove('hidden');
+            const btn = document.getElementById('btn-' + tabId);
+            if(btn) btn.classList.add('active');
+
+            // Trigger chart updates on tab switch if necessary
+            if (tabId === 'nav-calculator' && candidateRadarChartInstance) {
+                candidateRadarChartInstance.resize();
+            }
+        }
+
+        // Initialize Charts on Window Load
+        window.addEventListener('load', () => {
+            initWeightDonutChart();
+            initCandidateRadarChart();
+            renderRubricGrid();
+            updateCalculator();
+            updateInterRater();
+        });
+
+        // 1. Module Weight Allocation Donut Chart
+        function initWeightDonutChart() {
+            const ctx = document.getElementById('weightDonutChart').getContext('2d');
+            weightDonutChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Module 1: Written (30%)', 'Module 2: Viva (30%)', 'Module 3: Demo (40%)'],
+                    datasets: [{
+                        data: [30, 30, 40],
+                        backgroundColor: ['#3b5998', '#f59e0b', '#059669'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: { family: 'Inter', size: 11 },
+                                boxWidth: 12
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label + ': ' + context.raw + '% of Final Composite';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 2. Candidate Evaluation Radar Chart
+        function initCandidateRadarChart() {
+            const ctx = document.getElementById('candidateRadarChart').getContext('2d');
+            candidateRadarChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Written (B_W)', 'Viva (B_V)', 'Demo (B_D)'],
+                    datasets: [
+                        {
+                            label: 'Candidate Profile',
+                            data: [6.5, 6.0, 6.0],
+                            backgroundColor: 'rgba(59, 89, 152, 0.2)',
+                            borderColor: '#3b5998',
+                            borderWidth: 2,
+                            pointBackgroundColor: '#3b5998'
+                        },
+                        {
+                            label: 'Band 5.0 Baseline Hurdle',
+                            data: [5.0, 5.0, 5.0],
+                            backgroundColor: 'rgba(220, 38, 38, 0.05)',
+                            borderColor: '#dc2626',
+                            borderWidth: 1.5,
+                            borderDash: [4, 4],
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            min: 0,
+                            max: 10,
+                            ticks: { stepSize: 2, font: { family: 'Inter', size: 10 } },
+                            pointLabels: { font: { family: 'Inter', size: 11, weight: 'bold' } }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { font: { family: 'Inter', size: 11 }, boxWidth: 12 }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 3. Calculator Core Math & IELTS Rounding Logic
+        function updateCalculator() {
+            const bw = parseFloat(document.getElementById('input-bw').value);
+            const bv = parseFloat(document.getElementById('input-bv').value);
+            const bd = parseFloat(document.getElementById('input-bd').value);
+            const safeguardsPassed = document.getElementById('input-safeguards').checked;
+
+            document.getElementById('val-bw').innerText = bw.toFixed(1);
+            document.getElementById('val-bv').innerText = bv.toFixed(1);
+            document.getElementById('val-bd').innerText = bd.toFixed(1);
+
+            // Compute S_raw
+            const rawScore = (0.30 * bw) + (0.30 * bv) + (0.40 * bd);
+            const rawFixed = rawScore.toFixed(2);
+            
+            // Extract integer and fractional remainder R
+            const integerPart = Math.floor(rawScore);
+            const remainder = Math.round((rawScore - integerPart) * 100) / 100;
+
+            let finalBand = integerPart;
+            let ruleText = "";
+
+            if (remainder < 0.25) {
+                finalBand = integerPart + 0.0;
+                ruleText = `R = ${remainder.toFixed(2)} < 0.25 (Rounds Down to .0)`;
+            } else if (remainder < 0.75) {
+                finalBand = integerPart + 0.5;
+                ruleText = `0.25 <= R = ${remainder.toFixed(2)} < 0.75 (Rounds to .5)`;
+            } else {
+                finalBand = integerPart + 1.0;
+                ruleText = `R = ${remainder.toFixed(2)} >= 0.75 (Rounds Up to next whole)`;
+            }
+
+            // Gatekeeping Hurdle Rules
+            const minModuleScore = Math.min(bw, bv, bd);
+            const clearedHurdles = (minModuleScore >= 5.0) && safeguardsPassed;
+
+            // DOM Updates
+            document.getElementById('out-sraw').innerText = rawFixed;
+            document.getElementById('out-remainder').innerText = `Remainder R = ${remainder.toFixed(2)}`;
+            document.getElementById('out-band').innerText = `Band ${finalBand.toFixed(1)}`;
+            document.getElementById('out-rule').innerText = ruleText;
+
+            const mathLine = `$S_{raw} = (0.30 \\times ${bw.toFixed(1)}) + (0.30 \\times ${bv.toFixed(1)}) + (0.40 \\times ${bd.toFixed(1)}) = ${(0.3*bw).toFixed(2)} + ${(0.3*bv).toFixed(2)} + ${(0.4*bd).toFixed(2)} = ${rawFixed}$`;
+            document.getElementById('out-math-line').innerText = mathLine;
+
+            const statusBg = document.getElementById('status-card-bg');
+            const outStatus = document.getElementById('out-status');
+            const outSub = document.getElementById('out-status-sub');
+            const outHurdleRecap = document.getElementById('out-hurdle-recap');
+
+            if (clearedHurdles) {
+                statusBg.className = "bg-emerald-50 p-4 rounded-xl text-center border border-emerald-200";
+                outStatus.className = "text-xl font-black text-emerald-700";
+                outStatus.innerText = "PASS";
+                outSub.className = "text-[11px] text-emerald-600 block mt-1";
+                outSub.innerText = `Certified at Band ${finalBand.toFixed(1)}`;
+                outHurdleRecap.innerHTML = `<span class="text-emerald-700 font-bold">✓ All Hurdles Cleared:</span> Written (${bw}), Viva (${bv}), Demo (${bd}) >= 5.0. Safeguards verified.`;
+            } else {
+                statusBg.className = "bg-rose-50 p-4 rounded-xl text-center border border-rose-200";
+                outStatus.className = "text-xl font-black text-rose-700";
+                outStatus.innerText = "FAIL";
+                outSub.className = "text-[11px] text-rose-600 block mt-1";
+                outSub.innerText = "Unaccredited (Hurdle Failure)";
+                
+                let failReasons = [];
+                if (bw < 5.0) failReasons.push(`Written (${bw}) < 5.0`);
+                if (bv < 5.0) failReasons.push(`Viva (${bv}) < 5.0`);
+                if (bd < 5.0) failReasons.push(`Demo (${bd}) < 5.0`);
+                if (!safeguardsPassed) failReasons.push("Safeguard Sub-Component Failed");
+
+                outHurdleRecap.innerHTML = `<span class="text-rose-700 font-bold">❌ Hurdle Violation:</span> ${failReasons.join(', ')}. Candidate prevented from certification regardless of overall raw score.`;
+            }
+
+            // Update Radar Chart Dataset
+            if (candidateRadarChartInstance) {
+                candidateRadarChartInstance.data.datasets[0].data = [bw, bv, bd];
+                candidateRadarChartInstance.update();
+            }
+        }
+
+        // Preset Loader
+        function loadCandidatePreset(bw, bv, bd, safeguards) {
+            document.getElementById('input-bw').value = bw;
+            document.getElementById('input-bv').value = bv;
+            document.getElementById('input-bd').value = bd;
+            document.getElementById('input-safeguards').checked = safeguards;
+            updateCalculator();
+        }
+
+        // 4. Inter-Rater Reliability Workbench Logic
+        function updateInterRater() {
+            const raterA = parseFloat(document.getElementById('rater-a').value);
+            const raterB = parseFloat(document.getElementById('rater-b').value);
+
+            document.getElementById('val-rater-a').innerText = raterA.toFixed(1);
+            document.getElementById('val-rater-b').innerText = raterB.toFixed(1);
+
+            const diff = Math.abs(raterA - raterB);
+            const outDisc = document.getElementById('out-discrepancy');
+            const discBox = document.getElementById('discrepancy-box');
+            const msg = document.getElementById('out-adjudication-msg');
+            const protocol = document.getElementById('out-protocol-text');
+
+            outDisc.innerText = `${diff.toFixed(1)} Bands`;
+
+            if (diff > 1.5) {
+                discBox.className = "p-4 rounded-xl border bg-rose-50 border-rose-200 text-rose-900 space-y-2";
+                msg.className = "text-xs font-bold text-rose-700";
+                msg.innerText = "⚠️ DISCREPANCY EXCEEDS 1.5 BANDS: Automatic Senior Master Evaluator adjudication triggered.";
+                protocol.innerText = `Evaluator difference (${diff.toFixed(1)}) violates the 1.5-band inter-rater threshold. The score average is withheld pending blind third-evaluator adjudication.`;
+            } else {
+                discBox.className = "p-4 rounded-xl border bg-emerald-50 border-emerald-200 text-emerald-900 space-y-2";
+                msg.className = "text-xs font-bold text-emerald-700";
+                msg.innerText = "✓ ACCEPTABLE INTER-RATER CONSISTENCY: Scores fall within 1.5 band variance.";
+                const mean = ((raterA + raterB) / 2).toFixed(2);
+                protocol.innerText = `Evaluators agree within standard parameters. Final Module Score calculated as arithmetic mean: (${raterA.toFixed(1)} + ${raterB.toFixed(1)}) / 2 = ${mean} Bands.`;
+            }
+        }
+
+        // 5. 10-Band Rubric Filter & Render Logic
+        function setRubricModule(modKey) {
+            currentRubricModule = modKey;
+            ['m1', 'm2', 'm3'].forEach(k => {
+                const btn = document.getElementById('rub-btn-' + k);
+                if (k === modKey) {
+                    btn.className = "px-4 py-2 rounded-lg text-xs font-bold bg-brand-800 text-white";
+                } else {
+                    btn.className = "px-4 py-2 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200";
+                }
+            });
+            renderRubricGrid();
+        }
+
+        function filterRubricTier() {
+            renderRubricGrid();
+        }
+
+        function renderRubricGrid() {
+            const container = document.getElementById('rubric-grid-container');
+            const data = rubricData[currentRubricModule];
+            const filterTier = document.getElementById('rubric-tier-select').value;
+
+            let html = `<h3 class="text-base font-bold text-slate-900 mb-2">${data.title}</h3>`;
+
+            data.tiers.forEach(tier => {
+                if (filterTier !== 'all' && tier.id !== filterTier) return;
+
+                let tierBadgeColor = "bg-brand-50 text-brand-800 border-brand-200";
+                if (tier.id === 'tier-1') tierBadgeColor = "bg-emerald-100 text-emerald-900 border-emerald-300";
+                if (tier.id === 'tier-3') tierBadgeColor = "bg-amber-100 text-amber-900 border-amber-300";
+                if (tier.id === 'tier-4' || tier.id === 'tier-5') tierBadgeColor = "bg-rose-100 text-rose-900 border-rose-300";
+
+                html += `
+                    <div class="custom-card rounded-xl p-5 border-l-4 ${tier.id === 'tier-1' ? 'border-l-emerald-600' : tier.id === 'tier-3' ? 'border-l-amber-500' : tier.id === 'tier-4' || tier.id === 'tier-5' ? 'border-l-rose-600' : 'border-l-brand-600'}">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold px-3 py-1 rounded-full border ${tierBadgeColor}">${tier.label}</span>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                <span class="font-bold text-slate-700 block mb-1">${data.subcomponents[0]}</span>
+                                <p class="text-slate-600 leading-relaxed">${tier.domain}</p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                <span class="font-bold text-slate-700 block mb-1">${data.subcomponents[1]}</span>
+                                <p class="text-slate-600 leading-relaxed">${tier.fault}</p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                <span class="font-bold text-slate-700 block mb-1">${data.subcomponents[2]}</span>
+                                <p class="text-slate-600 leading-relaxed">${tier.query}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
